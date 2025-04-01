@@ -1,6 +1,9 @@
 package vn.beginner.laptopshop.controller.admin;
 
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -29,12 +32,32 @@ public class UserController {
     }
 
     @RequestMapping(value = "/admin/user", method = RequestMethod.GET)
-    public String getHomePage(Model model)
-    {
-        List<User> listUser = this.userService.getAllUser();
-        model.addAttribute("users",listUser);
+    public String getHomePage(Model model, @RequestParam(value = "page", defaultValue = "1") String pageStr) {
+        int page = 1;
+        try {
+            page = Integer.parseInt(pageStr);
+        } catch (NumberFormatException e) {
+            page = 1;
+        }
+
+        if (page < 1) {
+            page = 1;
+        }
+
+        int pageSize = 5; // Số lượng người dùng mỗi trang
+        Pageable pageable = PageRequest.of(page - 1, pageSize);
+
+        Page<User> pr = this.userService.getAllUser(pageable);
+
+        List<User> listUser = pr.getContent();
+
+        model.addAttribute("users", listUser);
+        model.addAttribute("currentPage", page);
+        model.addAttribute("totalPages", pr.getTotalPages());
+
         return "admin/user/user-list";
     }
+
 
     @RequestMapping(value = "/admin/user/create", method = RequestMethod.GET)
     public String createUserPage(Model model){

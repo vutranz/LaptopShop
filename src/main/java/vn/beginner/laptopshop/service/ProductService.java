@@ -1,6 +1,8 @@
 package vn.beginner.laptopshop.service;
 
 import jakarta.servlet.http.HttpSession;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import vn.beginner.laptopshop.domain.*;
 import vn.beginner.laptopshop.repository.*;
@@ -36,8 +38,8 @@ public class ProductService {
         return productRepository.save(product);
     }
 
-    public List<Product> getAllProducts() {
-        return productRepository.findAll();
+    public Page<Product> getAllProducts(Pageable pageable) {
+        return productRepository.findAll(pageable);
     }
 
     public Product getProductById(long id) {

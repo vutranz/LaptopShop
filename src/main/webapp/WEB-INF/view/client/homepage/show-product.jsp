@@ -51,7 +51,6 @@
 <jsp:include page="../layout/feature.jsp"/>
 
 
-<!-- Fruits Shop Start-->
 <div class="container-fluid fruite py-5">
     <div class="container py-5">
         <div class="tab-class text-center">
@@ -89,7 +88,7 @@
                                             </h4>
 
                                             <p style="font-size: 13px">${product.shortDesc}</p>
-                                            <div class="d-flex flex-lg-wrap justify-content-center">
+                                            <div class="d-flex flex-lg-wrap justify-content-center flex-column">
                                                 <p style="font-size: 15px;text-align: center; width: 100%" class="text-dark fw-bold mb-3">
                                                         <fmt:formatNumber type="number" value="${product.price}" /> VND</p>
                                                <form action="/add-product-to-cart/${product.id}" method="post">
@@ -103,14 +102,47 @@
                                     </div>
                                 </div>
                                 </c:forEach>
+                                <nav aria-label="Page navigation example">
+                                    <ul class="pagination d-flex justify-content-center flex-wrap">
+                                        <!-- Nút Previous -->
+                                        <li class="page-item ${currentPage == 1 ? 'disabled' : ''}">
+                                            <a class="page-link" href="?page=${currentPage - 1}" aria-label="Previous">
+                                                <span aria-hidden="true">&laquo;</span>
+                                            </a>
+                                        </li>
+
+                                        <!-- Hiển thị số trang động -->
+                                        <c:forEach var="i" begin="${currentPage - 2 > 1 ? currentPage - 2 : 1}"
+                                                   end="${currentPage + 2 < totalPages ? currentPage + 2 : totalPages}">
+                                            <li class="page-item ${currentPage == i ? 'active' : ''}">
+                                                <a class="page-link" href="?page=${i}">${i}</a>
+                                            </li>
+                                        </c:forEach>
+
+                                        <!-- Nút Next -->
+                                        <li class="page-item ${currentPage == totalPages ? 'disabled' : ''}">
+                                            <a class="page-link" href="?page=${currentPage + 1}" aria-label="Next">
+                                                <span aria-hidden="true">&raquo;</span>
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </nav>
+
                             </div>
+
                         </div>
+
                     </div>
+
                 </div>
+
             </div>
+
         </div>
+
     </div>
 </div>
+
 <!-- Fruits Shop End-->
 
 <jsp:include page="../layout/footer.jsp"/>

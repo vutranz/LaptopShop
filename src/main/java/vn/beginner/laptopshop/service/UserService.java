@@ -1,5 +1,7 @@
 package vn.beginner.laptopshop.service;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import vn.beginner.laptopshop.domain.Role;
 import vn.beginner.laptopshop.domain.User;
@@ -21,9 +23,9 @@ public class UserService {
         this.roleRepository = roleRepository;
     }
 
-    public List<User> getAllUser()
+    public Page<User> getAllUser(Pageable pageable)
     {
-        return this.userRepository.findAll();
+        return this.userRepository.findAll(pageable);
     }
 
     public User saveUser(User user)

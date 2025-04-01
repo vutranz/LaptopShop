@@ -1,5 +1,8 @@
 package vn.beginner.laptopshop.controller.admin;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -22,12 +25,32 @@ public class OrderController {
     }
 
     @GetMapping("/admin/order")
-    public String orderPage(Model model)
-    {
-        List<Order> orders = this.orderService.getAllOrder();
-        model.addAttribute("orders",orders);
+    public String orderPage(Model model, @RequestParam(value = "page", defaultValue = "1") String pageStr) {
+        int page = 1;
+        try {
+            page = Integer.parseInt(pageStr);
+        } catch (NumberFormatException e) {
+            page = 1;
+        }
+
+        if (page < 1) {
+            page = 1;
+        }
+
+        int pageSize = 5; // Số lượng đơn hàng mỗi trang
+        Pageable pageable = PageRequest.of(page - 1, pageSize);
+
+        Page<Order> pr = this.orderService.getAllOrder(pageable);
+
+        List<Order> orders = pr.getContent();
+
+        model.addAttribute("orders", orders);
+        model.addAttribute("currentPage", page);
+        model.addAttribute("totalPages", pr.getTotalPages());
+
         return "admin/order/show-order";
     }
+
 
     @GetMapping("/admin/order/view/{id}")
     public String viewOrderPage(@PathVariable long id, Model model){

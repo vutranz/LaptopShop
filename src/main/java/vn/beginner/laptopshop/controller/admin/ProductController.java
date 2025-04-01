@@ -1,6 +1,9 @@
 package vn.beginner.laptopshop.controller.admin;
 
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -25,13 +28,34 @@ public class ProductController {
         this.uploadService = uploadService;
     }
 
-    @RequestMapping(value = "/admin/product",method = RequestMethod.GET)
-    public String productPage(Model model)
-    {
-        List<Product> listProduct = this.productService.getAllProducts();
+    @RequestMapping(value = "/admin/product", method = RequestMethod.GET)
+    public String productPage(Model model, @RequestParam(value = "page", defaultValue = "1") String pageStr) {
+        int page = 1;
+        try {
+            page = Integer.parseInt(pageStr);
+        } catch (NumberFormatException e) {
+            page = 1;
+        }
+
+        if (page < 1) {
+            page = 1;
+        }
+
+        int pageSize = 5;
+        Pageable pageable = PageRequest.of(page - 1, pageSize);
+
+        Page<Product> pr = this.productService.getAllProducts(pageable);
+
+        List<Product> listProduct = pr.getContent();
+
         model.addAttribute("products", listProduct);
+        model.addAttribute("currentPage", page);
+        model.addAttribute("totalPages", pr.getTotalPages());
+
         return "admin/product/show-product";
     }
+
+
 
     @RequestMapping(value = "/admin/product/create", method = RequestMethod.GET)
     public String createProductPage(Model model){
