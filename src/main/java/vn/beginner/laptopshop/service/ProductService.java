@@ -1,7 +1,10 @@
 package vn.beginner.laptopshop.service;
 
+import org.springframework.data.domain.Sort;
+
 import jakarta.servlet.http.HttpSession;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -44,8 +47,15 @@ public class ProductService {
         return (root, query, criteriaBuilder) -> criteriaBuilder.like(root.get(Product_.NAME), "%" + name + "%");
     }
 
-    public Page<Product> getAllProductsWithSpec(Pageable pageable, String name, Double minPrice, Double maxPrice, String factory) {
-        Specification<Product> spec = ProductSpec.filterProducts(name, minPrice, maxPrice, factory);
+    public Page<Product> getAllProductsWithSpec(Pageable pageable, String name, Double minPrice, Double maxPrice,
+            List<String> brands, List<String> usages, List<String> prices, String sortPrice) {
+        Specification<Product> spec = ProductSpec.filterProducts(name, minPrice, maxPrice, brands, usages, prices);
+
+        if (sortPrice != null) {
+            Sort sort = sortPrice.equals("asc") ? Sort.by("price").ascending() : Sort.by("price").descending();
+            pageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort);
+        }
+
         return productRepository.findAll(spec, pageable);
     }
 
@@ -125,6 +135,7 @@ public class ProductService {
     public Cart findCartById(Long cartId) {
         return this.cartRepository.findById(cartId).orElse(null);
     }
+
 
     public void handlePlaceOrder(User user, HttpSession session) {
 

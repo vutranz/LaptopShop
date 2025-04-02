@@ -1,5 +1,7 @@
 package vn.beginner.laptopshop.controller.client;
 
+import java.util.Collections;
+
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import org.eclipse.tags.shaded.org.apache.xpath.operations.Mod;
@@ -16,6 +18,7 @@ import vn.beginner.laptopshop.service.ProductService;
 import vn.beginner.laptopshop.service.UserService;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -69,6 +72,25 @@ public class ItemController {
         return "client/cart/show-cart";
     }
 
+    @RequestMapping(value = "/delete-cart-product/{id}", method = RequestMethod.POST)
+    public String deleteCart(@PathVariable long id, HttpServletRequest request) {
+        HttpSession session = request.getSession(false);
+        long cartDetailId = id;
+        this.productService.handleRemoveCartDetail(cartDetailId, session);
+        return "redirect:/cart";
+    }
+
+    @RequestMapping(value = "/process-checkout", method = RequestMethod.POST)
+    public String processCheckout(HttpServletRequest request) {
+        User currentUser = new User();
+        HttpSession session = request.getSession(false);
+        long id = (long) session.getAttribute("id");
+        currentUser.setId(id);
+        this.productService.handlePlaceOrder(currentUser, session);
+
+        return "client/cart/thankyou";
+    }
+
     @RequestMapping(value = "/confirm-checkout", method = RequestMethod.GET)
     public String confirmCheckout(@RequestParam Long cartDetailId, Model model, HttpServletRequest request) {
         HttpSession session = request.getSession();
@@ -96,24 +118,16 @@ public class ItemController {
         return "client/cart/confirm-cart";
     }
 
-    @RequestMapping(value = "/process-checkout", method = RequestMethod.POST)
-    public String processCheckout(HttpServletRequest request) {
-        User currentUser = new User();
-        HttpSession session = request.getSession(false);
-        long id = (long) session.getAttribute("id");
-        currentUser.setId(id);
-        this.productService.handlePlaceOrder(currentUser, session);
-
-        return "client/cart/thankyou";
-    }
-
     @RequestMapping(value = "/products", method = RequestMethod.GET)
     public String getProductPage(Model model,
             @RequestParam(value = "page", required = false) Optional<String> pageOptional,
             @RequestParam(value = "name", required = false) Optional<String> nameOptional,
             @RequestParam(value = "min-price", required = false) Optional<String> minOptional,
             @RequestParam(value = "max-price", required = false) Optional<String> maxOptional,
-            @RequestParam(value = "factory", required = false) Optional<String> factoryOptional) {
+            @RequestParam(value = "brand", required = false) Optional<String> brandOptional,
+            @RequestParam(value = "usage", required = false) Optional<String> usageOptional,
+            @RequestParam(value = "price", required = false) Optional<String> priceOptional,
+            @RequestParam(value = "sortPrice", required = false) Optional<String> sortPriceOptional) {
 
         int page = 1;
         try {
@@ -128,13 +142,20 @@ public class ItemController {
         int pageSize = 5;
         Pageable pageable = PageRequest.of(page - 1, pageSize);
 
-        String queryName = nameOptional.orElse("");
-        String factory = factoryOptional.orElse("");
+        List<String> brands = brandOptional.isPresent() ? Arrays.asList(brandOptional.get().split(","))
+                : new ArrayList<>();
+        List<String> usages = usageOptional.isPresent() ? Arrays.asList(usageOptional.get().split(","))
+                : new ArrayList<>();
+        List<String> prices = priceOptional.isPresent() ? Arrays.asList(priceOptional.get().split(","))
+                : new ArrayList<>();
 
         Double minPrice = minOptional.map(Double::parseDouble).orElse(null);
         Double maxPrice = maxOptional.map(Double::parseDouble).orElse(null);
 
-        Page<Product> pr = productService.getAllProductsWithSpec(pageable, queryName, minPrice, maxPrice, factory);
+        String sortPrice = sortPriceOptional.orElse(null);
+
+        Page<Product> pr = productService.getAllProductsWithSpec(pageable, nameOptional.orElse(""), minPrice, maxPrice,
+                brands, usages, prices, sortPrice);
         List<Product> productList = pr.getContent();
 
         model.addAttribute("productList", productList);
