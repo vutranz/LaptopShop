@@ -3,9 +3,11 @@ package vn.beginner.laptopshop.service;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import vn.beginner.laptopshop.domain.*;
 import vn.beginner.laptopshop.repository.*;
+import vn.beginner.laptopshop.service.specification.ProductSpec;
 
 import java.util.List;
 import java.util.Optional;
@@ -21,21 +23,30 @@ public class ProductService {
     private final OrderDetailRepository orderDetailRepository;
 
     public ProductService(ProductRepository productRepository,
-                          CartRepository cartRepository,
-                          CartDetailRepository cartDetailRepository,
-                          UserService userService,
-                          OrderRepository orderRepository,
-                          OrderDetailRepository orderDetailRepository) {
+            CartRepository cartRepository,
+            CartDetailRepository cartDetailRepository,
+            UserService userService,
+            OrderRepository orderRepository,
+            OrderDetailRepository orderDetailRepository) {
         this.productRepository = productRepository;
         this.cartRepository = cartRepository;
         this.cartDetailRepository = cartDetailRepository;
         this.userService = userService;
-        this.orderRepository=orderRepository;
+        this.orderRepository = orderRepository;
         this.orderDetailRepository = orderDetailRepository;
     }
 
     public Product CreateProduct(Product product) {
         return productRepository.save(product);
+    }
+
+    private Specification<Product> nameLike(String name) {
+        return (root, query, criteriaBuilder) -> criteriaBuilder.like(root.get(Product_.NAME), "%" + name + "%");
+    }
+
+    public Page<Product> getAllProductsWithSpec(Pageable pageable, String name, Double minPrice, Double maxPrice, String factory) {
+        Specification<Product> spec = ProductSpec.filterProducts(name, minPrice, maxPrice, factory);
+        return productRepository.findAll(spec, pageable);
     }
 
     public Page<Product> getAllProducts(Pageable pageable) {
@@ -50,11 +61,11 @@ public class ProductService {
         productRepository.deleteById(id);
     }
 
-    public void handleAddProductToCart(String email, long productId, HttpSession session){
+    public void handleAddProductToCart(String email, long productId, HttpSession session) {
         User user = this.userService.getUserByEmail(email);
-        if(user != null) {
+        if (user != null) {
             Optional<Product> productOptional = this.productRepository.findById(productId);
-            if(productOptional.isPresent()) {
+            if (productOptional.isPresent()) {
                 Product product = productOptional.get();
                 Cart cart = this.cartRepository.findByUser(user);
 
@@ -88,29 +99,25 @@ public class ProductService {
         }
     }
 
-
-    public Cart fetchByUser(User user)
-    {
+    public Cart fetchByUser(User user) {
         return this.cartRepository.findByUser(user);
     }
 
-    public void handleRemoveCartDetail(long cartDetailId,HttpSession session)
-    {
+    public void handleRemoveCartDetail(long cartDetailId, HttpSession session) {
         Optional<CartDetail> cartDetailOptinal = this.cartDetailRepository.findById(cartDetailId);
-        if(cartDetailOptinal.isPresent()){
+        if (cartDetailOptinal.isPresent()) {
             CartDetail cartDetail = cartDetailOptinal.get();
             Cart currentCart = cartDetail.getCart();
             this.cartDetailRepository.deleteById(cartDetailId);
 
-            if(currentCart.getSum()>1)
-            {
-                int s = currentCart.getSum()-1;
+            if (currentCart.getSum() > 1) {
+                int s = currentCart.getSum() - 1;
                 currentCart.setSum(s);
-                session.setAttribute("sum",s);
+                session.setAttribute("sum", s);
                 this.cartRepository.save(currentCart);
-            }else{
+            } else {
                 this.cartDetailRepository.deleteById(currentCart.getId());
-                session.setAttribute("sum",0);
+                session.setAttribute("sum", 0);
             }
         }
     }
@@ -119,32 +126,29 @@ public class ProductService {
         return this.cartRepository.findById(cartId).orElse(null);
     }
 
-    public void handlePlaceOrder(User user, HttpSession session){
+    public void handlePlaceOrder(User user, HttpSession session) {
 
-        //step 1: getCartByUser
+        // step 1: getCartByUser
 
         Cart cart = this.cartRepository.findByUser(user);
-        if(cart!=null)
-        {
+        if (cart != null) {
             List<CartDetail> cartDetails = cart.getCartDetails();
 
-            if(cartDetails!=null)
-            {
-                //cretae order
+            if (cartDetails != null) {
+                // cretae order
                 Order order = new Order();
                 order.setUser(user);
                 order.setTotalPrice(order.getTotalPrice());
                 order.setStatus("Pending");
                 double sum = 0;
-                for(CartDetail cd : cartDetails){
-                    sum+= cd.getPrice();
+                for (CartDetail cd : cartDetails) {
+                    sum += cd.getPrice();
                 }
                 order.setTotalPrice(sum);
                 order = this.orderRepository.save(order);
 
-                //create orderdetail
-                for(CartDetail cd : cartDetails)
-                {
+                // create orderdetail
+                for (CartDetail cd : cartDetails) {
                     OrderDetail orderDetail = new OrderDetail();
                     orderDetail.setOrder(order);
                     orderDetail.setProduct(cd.getProduct());
@@ -152,22 +156,21 @@ public class ProductService {
                     orderDetail.setQuantity(cd.getQuantity());
                     this.orderDetailRepository.save(orderDetail);
                 }
-                //step 2: delete cart_detail and cart
-                for(CartDetail cd : cartDetails)
-                {
+                // step 2: delete cart_detail and cart
+                for (CartDetail cd : cartDetails) {
                     this.cartDetailRepository.deleteById(cd.getId());
                 }
 
                 this.cartRepository.deleteById(cart.getId());
 
-                //step 3: update session
-                session.setAttribute("sum",0);
+                // step 3: update session
+                session.setAttribute("sum", 0);
             }
         }
 
     }
 
-    public int getAllProductCount(){
+    public int getAllProductCount() {
         List<Product> products = this.productRepository.findAll();
         return products.size();
     }

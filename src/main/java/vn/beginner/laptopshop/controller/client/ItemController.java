@@ -17,6 +17,7 @@ import vn.beginner.laptopshop.service.UserService;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Controller
 public class ItemController {
@@ -26,49 +27,45 @@ public class ItemController {
     private final UserService userService;
 
     public ItemController(ProductService productService,
-                          OrderService orderService,
-                          UserService userService) {
+            OrderService orderService,
+            UserService userService) {
         this.productService = productService;
         this.orderService = orderService;
         this.userService = userService;
     }
 
-    @RequestMapping(value = "/product/{id}",method = RequestMethod.GET)
-    public String getProductPage(Model model, @PathVariable long id)
-    {
+    @RequestMapping(value = "/product/{id}", method = RequestMethod.GET)
+    public String getProductPage(Model model, @PathVariable long id) {
         Product product = productService.getProductById(id);
         model.addAttribute("product", product);
         return "client/product/product-detail";
     }
 
-    @RequestMapping(value = "/add-product-to-cart/{id}",method = RequestMethod.POST)
-    public String addProductToCart(@PathVariable long id, HttpServletRequest request)
-    {
+    @RequestMapping(value = "/add-product-to-cart/{id}", method = RequestMethod.POST)
+    public String addProductToCart(@PathVariable long id, HttpServletRequest request) {
         HttpSession session = request.getSession(false);
         long productId = id;
-        String email = (String)session.getAttribute("email");
+        String email = (String) session.getAttribute("email");
 
-        this.productService.handleAddProductToCart(email,productId,session);
+        this.productService.handleAddProductToCart(email, productId, session);
         return "redirect:/";
     }
 
-    @RequestMapping(value = "/cart",method = RequestMethod.GET)
-    public String getCartPage(Model model, HttpServletRequest request)
-    {
+    @RequestMapping(value = "/cart", method = RequestMethod.GET)
+    public String getCartPage(Model model, HttpServletRequest request) {
         User currentUser = new User();
         HttpSession session = request.getSession(false);
         long id = (long) session.getAttribute("id");
         currentUser.setId(id);
         Cart cart = this.productService.fetchByUser(currentUser);
-        List<CartDetail> cartDetails = cart == null ? new ArrayList<CartDetail>() :cart.getCartDetails();
+        List<CartDetail> cartDetails = cart == null ? new ArrayList<CartDetail>() : cart.getCartDetails();
         double totalPrice = 0;
-        for(CartDetail cd : cartDetails)
-        {
-            totalPrice+= cd.getPrice()* cd.getQuantity();
+        for (CartDetail cd : cartDetails) {
+            totalPrice += cd.getPrice() * cd.getQuantity();
         }
 
-        model.addAttribute("cartDetails",cartDetails);
-        model.addAttribute("totalPrice",totalPrice);
+        model.addAttribute("cartDetails", cartDetails);
+        model.addAttribute("totalPrice", totalPrice);
         return "client/cart/show-cart";
     }
 
@@ -101,25 +98,29 @@ public class ItemController {
 
     @RequestMapping(value = "/process-checkout", method = RequestMethod.POST)
     public String processCheckout(HttpServletRequest request) {
-            User currentUser = new User();
-            HttpSession session = request.getSession(false);
-            long id = (long) session.getAttribute("id");
-            currentUser.setId(id);
-            this.productService.handlePlaceOrder(currentUser,session);
+        User currentUser = new User();
+        HttpSession session = request.getSession(false);
+        long id = (long) session.getAttribute("id");
+        currentUser.setId(id);
+        this.productService.handlePlaceOrder(currentUser, session);
 
-            return "client/cart/thankyou";
+        return "client/cart/thankyou";
     }
 
-    @RequestMapping(value = "/products",method = RequestMethod.GET)
-    public String getProductPage(Model model, @RequestParam(value = "page", defaultValue = "1") String pageStr)
-    {
+    @RequestMapping(value = "/products", method = RequestMethod.GET)
+    public String getProductPage(Model model,
+            @RequestParam(value = "page", required = false) Optional<String> pageOptional,
+            @RequestParam(value = "name", required = false) Optional<String> nameOptional,
+            @RequestParam(value = "min-price", required = false) Optional<String> minOptional,
+            @RequestParam(value = "max-price", required = false) Optional<String> maxOptional,
+            @RequestParam(value = "factory", required = false) Optional<String> factoryOptional) {
+
         int page = 1;
         try {
-            page = Integer.parseInt(pageStr);
+            page = Integer.parseInt(pageOptional.orElse("1"));
         } catch (NumberFormatException e) {
             page = 1;
         }
-
         if (page < 1) {
             page = 1;
         }
@@ -127,13 +128,20 @@ public class ItemController {
         int pageSize = 5;
         Pageable pageable = PageRequest.of(page - 1, pageSize);
 
-        Page<Product> pr = this.productService.getAllProducts(pageable);
+        String queryName = nameOptional.orElse("");
+        String factory = factoryOptional.orElse("");
+
+        Double minPrice = minOptional.map(Double::parseDouble).orElse(null);
+        Double maxPrice = maxOptional.map(Double::parseDouble).orElse(null);
+
+        Page<Product> pr = productService.getAllProductsWithSpec(pageable, queryName, minPrice, maxPrice, factory);
         List<Product> productList = pr.getContent();
 
-        //List<Product> productList = this.productService.getAllProducts();
         model.addAttribute("productList", productList);
         model.addAttribute("currentPage", page);
         model.addAttribute("totalPages", pr.getTotalPages());
-        return "client/homepage/show-product";
+
+        return "client/homepage/products";
     }
+
 }
